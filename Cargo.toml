@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 libmpv = { version = "2.0.1", default-features = false }
 libmpv-sys = { version = "3.1.0", features = ["use-bindgen"] }
 url = "2.3.1"
+tempfile = "3.3.0"
