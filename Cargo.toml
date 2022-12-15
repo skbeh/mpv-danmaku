@@ -1,0 +1,12 @@
+[package]
+name = "mpv_danmaku"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+libmpv = { version = "2.0.1", default-features = false }
+libmpv-sys = { version = "3.1.0", features = ["use-bindgen"] }
+url = "2.3.1"
