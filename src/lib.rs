@@ -41,7 +41,7 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
                 remove_xml_sub(&mpv);
 
                 let (temp_dir, mut temp_file) =
-                    match create_temp_file(mpv.get_property::<String>("filename").unwrap()) {
+                    match create_temp_file(mpv.get_property("filename").unwrap()) {
                         None => continue,
                         Some(temp_tuple) => temp_tuple,
                     };
@@ -63,12 +63,8 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
 }
 
 fn remove_xml_sub(mpv: &Mpv) {
-    let xml_sub_id_option = (0..mpv
-        .get_property::<String>("track-list/count")
-        .unwrap()
-        .parse()
-        .unwrap())
-        .find(|track_id| {
+    let xml_sub_id_option =
+        (0..mpv.get_property::<i64>("track-list/count").unwrap()).find(|track_id| {
             mpv.get_property::<String>(&format!("track-list/{}/type", track_id))
                 .unwrap()
                 == "sub"
