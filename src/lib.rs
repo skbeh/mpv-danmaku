@@ -40,11 +40,11 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
 
                 remove_xml_sub(&mpv);
 
-                let (temp_dir, mut temp_file);
-                match create_temp_file(mpv.get_property::<String>("filename").unwrap()) {
-                    None => continue,
-                    Some(temp_tuple) => (temp_dir, temp_file) = temp_tuple,
-                }
+                let (temp_dir, mut temp_file) =
+                    match create_temp_file(mpv.get_property::<String>("filename").unwrap()) {
+                        None => continue,
+                        Some(temp_tuple) => temp_tuple,
+                    };
 
                 let subtitle = get_danmaku_ass(&mpv.get_property("path").unwrap()).unwrap();
                 temp_file.write_all(&subtitle).unwrap();
