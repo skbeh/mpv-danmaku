@@ -6,6 +6,7 @@ use std::{
     mem::{transmute, ManuallyDrop},
     process::Command,
     ptr::NonNull,
+    str,
     sync::atomic::AtomicBool,
 };
 use tempfile::{tempdir, TempDir};
@@ -41,12 +42,13 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
                 remove_xml_sub(&mpv);
 
                 let (temp_dir, mut temp_file) =
-                    match create_temp_file(mpv.get_property("filename").unwrap()) {
+                    match create_temp_file(&mpv.get_property::<String>("filename").unwrap()) {
                         None => continue,
                         Some(temp_tuple) => temp_tuple,
                     };
 
-                let subtitle = get_danmaku_ass(&mpv.get_property("path").unwrap()).unwrap();
+                let subtitle =
+                    get_danmaku_ass(&mpv.get_property::<String>("path").unwrap()).unwrap();
                 temp_file.write_all(&subtitle).unwrap();
 
                 mpv.set_property("sub-auto", "exact").unwrap();
@@ -81,19 +83,19 @@ fn remove_xml_sub(mpv: &Mpv) {
     }
 }
 
-fn create_temp_file(filename: String) -> Option<(TempDir, File)> {
+fn create_temp_file(filename: &str) -> Option<(TempDir, File)> {
     let temp_directory = tempdir().ok()?;
     let temp_path_buf = temp_directory.path().join(filename).with_extension("ass");
     Some((temp_directory, File::create(temp_path_buf).ok()?))
 }
 
-fn get_danmaku_ass(path: &String) -> Option<Vec<u8>> {
+fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
     let output = Command::new("danmu2ass")
         .args(["-o", "-", path])
         .output();
     match output {
         Ok(output) => {
-            println!("{}", String::from_utf8(output.stderr).unwrap());
+            println!("{}", str::from_utf8(&output.stderr).unwrap());
             Some(output.stdout)
         }
         Err(err) => {
