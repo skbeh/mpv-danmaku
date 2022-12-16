@@ -1,5 +1,5 @@
 [package]
-name = "mpv_danmaku"
+name = "mpv-danmaku"
 version = "0.1.0"
 edition = "2021"
 
