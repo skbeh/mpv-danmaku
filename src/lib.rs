@@ -65,17 +65,17 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
 fn remove_xml_sub(mpv: &Mpv) {
     let xml_sub_id_option =
         (0..mpv.get_property::<i64>("track-list/count").unwrap()).find(|track_id| {
-            mpv.get_property::<String>(&format!("track-list/{}/type", track_id))
+            mpv.get_property::<String>(&format!("track-list/{track_id}/type"))
                 .unwrap()
                 == "sub"
-                && mpv.get_property::<String>(&format!("track-list/{}/lang", track_id))
+                && mpv.get_property::<String>(&format!("track-list/{track_id}/lang"))
                     == Ok("danmaku".to_owned())
-                && mpv.get_property::<String>(&format!("track-list/{}/title", track_id))
+                && mpv.get_property::<String>(&format!("track-list/{track_id}/title"))
                     == Ok("xml".to_owned())
         });
     if let Some(xml_sub_id) = xml_sub_id_option {
         let sub_id = mpv
-            .get_property::<String>(&format!("track-list/{}/id", xml_sub_id))
+            .get_property::<String>(&format!("track-list/{xml_sub_id}/id"))
             .unwrap();
         mpv.command("sub-remove", &[&sub_id]).unwrap();
     }
@@ -97,7 +97,7 @@ fn get_danmaku_ass(path: &String) -> Option<Vec<u8>> {
             Some(output.stdout)
         }
         Err(err) => {
-            println!("{}", err);
+            println!("{err}");
             None
         }
     }
