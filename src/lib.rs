@@ -28,7 +28,11 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     let mut event_context = mpv.create_event_context();
 
     loop {
-        match event_context.wait_event(-1.).unwrap().unwrap() {
+        let event = match event_context.wait_event(-1.).unwrap() {
+            Err(_) => continue,
+            Ok(event) => event,
+        };
+        match event {
             Event::FileLoaded => {
                 let media_path_origin = mpv.get_property::<String>("path").unwrap();
                 match Url::parse(&media_path_origin) {
