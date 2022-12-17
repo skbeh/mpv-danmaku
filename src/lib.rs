@@ -30,7 +30,8 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     loop {
         match event_context.wait_event(-1.).unwrap().unwrap() {
             Event::FileLoaded => {
-                match Url::parse(&mpv.get_property::<String>("path").unwrap()) {
+                let media_path_origin = mpv.get_property::<String>("path").unwrap();
+                match Url::parse(&media_path_origin) {
                     Err(_) => continue,
                     Ok(url) => {
                         if url.domain() != Some("www.bilibili.com") {
@@ -38,6 +39,7 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
                         }
                     }
                 }
+                let media_path = media_path_origin.trim_end_matches('/');
 
                 remove_xml_sub(&mpv);
 
@@ -47,8 +49,7 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
                         Some(temp_tuple) => temp_tuple,
                     };
 
-                let subtitle =
-                    get_danmaku_ass(&mpv.get_property::<String>("path").unwrap()).unwrap();
+                let subtitle = get_danmaku_ass(media_path).unwrap();
                 temp_file.write_all(&subtitle).unwrap();
 
                 mpv.set_property("sub-auto", "exact").unwrap();
@@ -90,9 +91,7 @@ fn create_temp_file(filename: &str) -> Option<(TempDir, File)> {
 }
 
 fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
-    let output = Command::new("danmu2ass")
-        .args(["-o", "-", path])
-        .output();
+    let output = Command::new("danmu2ass").args(["-o", "-", path]).output();
     match output {
         Ok(output) => {
             println!("{}", str::from_utf8(&output.stderr).unwrap());
