@@ -28,9 +28,10 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     let mut event_context = mpv.create_event_context();
 
     loop {
-        let event = match event_context.wait_event(-1.).unwrap() {
-            Err(_) => continue,
-            Ok(event) => event,
+        let event = if let Some(Ok(event)) = event_context.wait_event(-1.) {
+            event
+        } else {
+            continue;
         };
         match event {
             Event::FileLoaded => {
