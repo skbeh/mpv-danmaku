@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-libmpv = { version = "2.0.1", default-features = false }
-libmpv-sys = { version = "3.1.0", features = ["use-bindgen"] }
-url = "2.3.1"
-tempfile = "3.3.0"
+libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "c76af562cd7a16663f4592986998ddde2219eb2a", default-features = false }
+libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "c76af562cd7a16663f4592986998ddde2219eb2a" }
+url = "2.4.1"
+tempfile = "3.8.1"

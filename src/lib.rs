@@ -1,14 +1,6 @@
 use libmpv::{events::Event, Mpv};
 use libmpv_sys::mpv_handle;
-use std::{
-    fs::File,
-    io::Write,
-    mem::{transmute, ManuallyDrop},
-    process::Command,
-    ptr::NonNull,
-    str,
-    sync::atomic::AtomicBool,
-};
+use std::{fs::File, io::Write, process::Command, ptr::NonNull, str, sync::atomic::AtomicBool};
 use tempfile::{tempdir, TempDir};
 use url::Url;
 
@@ -20,19 +12,15 @@ struct InnerMpv {
 
 #[no_mangle]
 extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
-    let pub_mpv = InnerMpv {
-        ctx: NonNull::new(handle).unwrap(),
-        events_guard: AtomicBool::new(false),
-    };
-    let mpv = ManuallyDrop::new(unsafe { transmute::<InnerMpv, Mpv>(pub_mpv) });
-    let mut event_context = mpv.create_event_context();
+    let mut mpv = Mpv::new_with_context(handle).unwrap();
 
     loop {
-        let event = if let Some(Ok(event)) = event_context.wait_event(-1.) {
-            event
-        } else {
+        let event_context = mpv.event_context_mut();
+
+        let Some(Ok(event)) = event_context.wait_event(-1.) else {
             continue;
         };
+
         match event {
             Event::FileLoaded => {
                 let media_path_origin = mpv.get_property::<String>("path").unwrap();
@@ -81,6 +69,7 @@ fn remove_xml_sub(mpv: &Mpv) {
                 && mpv.get_property::<String>(&format!("track-list/{track_id}/title"))
                     == Ok("xml".to_owned())
         });
+
     if let Some(xml_sub_id) = xml_sub_id_option {
         let sub_id = mpv
             .get_property::<String>(&format!("track-list/{xml_sub_id}/id"))
@@ -97,6 +86,7 @@ fn create_temp_file(filename: &str) -> Option<(TempDir, File)> {
 
 fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
     let output = Command::new("danmu2ass").args(["-o", "-", path]).output();
+
     match output {
         Ok(output) => {
             println!("{}", str::from_utf8(&output.stderr).unwrap());
