@@ -1,14 +1,8 @@
 use libmpv::{events::Event, Mpv};
 use libmpv_sys::mpv_handle;
-use std::{fs::File, io::Write, process::Command, ptr::NonNull, str, sync::atomic::AtomicBool};
+use std::{fs::File, io::Write, process::Command, str};
 use tempfile::{tempdir, TempDir};
 use url::Url;
-
-#[allow(dead_code)]
-struct InnerMpv {
-    ctx: NonNull<libmpv_sys::mpv_handle>,
-    events_guard: AtomicBool,
-}
 
 #[no_mangle]
 extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
@@ -62,8 +56,7 @@ fn remove_xml_sub(mpv: &Mpv) {
     let xml_sub_id_option =
         (0..mpv.get_property::<i64>("track-list/count").unwrap()).find(|track_id| {
             mpv.get_property::<String>(&format!("track-list/{track_id}/type"))
-                .unwrap()
-                == "sub"
+                == Ok("sub".to_owned())
                 && mpv.get_property::<String>(&format!("track-list/{track_id}/lang"))
                     == Ok("danmaku".to_owned())
                 && mpv.get_property::<String>(&format!("track-list/{track_id}/title"))
