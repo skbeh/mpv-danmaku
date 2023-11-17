@@ -1,12 +1,12 @@
 use libmpv::{events::Event, Mpv};
 use libmpv_sys::mpv_handle;
-use std::{fs::File, io::Write, process::Command, str};
+use std::{fs::File, io::Write, mem::ManuallyDrop, process::Command, str};
 use tempfile::{tempdir, TempDir};
 use url::Url;
 
 #[no_mangle]
 extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
-    let mut mpv = Mpv::new_with_context(handle).unwrap();
+    let mut mpv = ManuallyDrop::new(Mpv::new_with_context(handle).unwrap());
 
     loop {
         let Some(Ok(event)) = mpv.event_context_mut().wait_event(-1.) else {
