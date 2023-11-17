@@ -9,40 +9,13 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     let mut mpv = Mpv::new_with_context(handle).unwrap();
 
     loop {
-        let event_context = mpv.event_context_mut();
-
-        let Some(Ok(event)) = event_context.wait_event(-1.) else {
+        let Some(Ok(event)) = mpv.event_context_mut().wait_event(-1.) else {
             continue;
         };
 
         match event {
             Event::FileLoaded => {
-                let media_path_origin = mpv.get_property::<String>("path").unwrap();
-                match Url::parse(&media_path_origin) {
-                    Err(_) => continue,
-                    Ok(url) => {
-                        if url.domain() != Some("www.bilibili.com") {
-                            continue;
-                        }
-                    }
-                }
-                let media_path = media_path_origin.trim_end_matches('/');
-
-                remove_xml_sub(&mpv);
-
-                let (temp_dir, mut temp_file) =
-                    match create_temp_file(&mpv.get_property::<String>("filename").unwrap()) {
-                        None => continue,
-                        Some(temp_tuple) => temp_tuple,
-                    };
-
-                let subtitle = get_danmaku_ass(media_path).unwrap();
-                temp_file.write_all(&subtitle).unwrap();
-
-                mpv.set_property("sub-auto", "exact").unwrap();
-                mpv.set_property("options/sub-file-paths", temp_dir.path().to_str().unwrap())
-                    .unwrap();
-                mpv.command("rescan-external-files", &["reselect"]).ok();
+                load_sub(&mpv);
             }
             Event::Shutdown => {
                 return 0;
@@ -50,6 +23,35 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
             _ => {}
         }
     }
+}
+
+fn load_sub(mpv: &Mpv) {
+    let media_path_origin = mpv.get_property::<String>("path").unwrap();
+    match Url::parse(&media_path_origin) {
+        Err(_) => return,
+        Ok(url) => {
+            if url.domain() != Some("www.bilibili.com") {
+                return;
+            }
+        }
+    }
+    let media_path = media_path_origin.trim_end_matches('/');
+
+    remove_xml_sub(mpv);
+
+    let (temp_dir, mut temp_file) =
+        match create_temp_file(&mpv.get_property::<String>("filename").unwrap()) {
+            None => return,
+            Some(temp_tuple) => temp_tuple,
+        };
+
+    let subtitle = get_danmaku_ass(media_path).unwrap();
+    temp_file.write_all(&subtitle).unwrap();
+
+    mpv.set_property("sub-auto", "exact").unwrap();
+    mpv.set_property("options/sub-file-paths", temp_dir.path().to_str().unwrap())
+        .unwrap();
+    mpv.command("rescan-external-files", &["reselect"]).ok();
 }
 
 fn remove_xml_sub(mpv: &Mpv) {
@@ -78,7 +80,9 @@ fn create_temp_file(filename: &str) -> Option<(TempDir, File)> {
 }
 
 fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
-    let output = Command::new("danmu2ass").args(["-o", "-", path]).output();
+    let output = Command::new("danmu2ass")
+        .args(["--no-web", "-o", "-", path])
+        .output();
 
     match output {
         Ok(output) => {
