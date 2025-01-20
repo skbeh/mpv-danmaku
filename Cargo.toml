@@ -1,13 +1,14 @@
 [package]
 name = "mpv-danmaku"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "c76af562cd7a16663f4592986998ddde2219eb2a", default-features = false }
-libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "c76af562cd7a16663f4592986998ddde2219eb2a" }
-url = "2.4.1"
-tempfile = "3.8.1"
+libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702", default-features = false }
+libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702" }
+url = "2.5.4"
+tempfile = "3.15.0"
+abv = "0.3.0"

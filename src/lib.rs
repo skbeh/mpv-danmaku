@@ -1,6 +1,6 @@
 use libmpv::{events::Event, Mpv};
 use libmpv_sys::mpv_handle;
-use std::{fs::File, io::Write, mem::ManuallyDrop, process::Command, str};
+use std::{fs::File, io::Write, mem::ManuallyDrop, path::PathBuf, process::Command, str};
 use tempfile::{tempdir, TempDir};
 use url::Url;
 
@@ -15,7 +15,9 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
 
         match event {
             Event::FileLoaded => {
-                load_sub(&mpv);
+                if let Err(err) = load_sub(&mpv) {
+                    eprintln!("Failed to load danmaku subtitle: {err}");
+                }
             }
             Event::Shutdown => {
                 return 0;
@@ -25,33 +27,58 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     }
 }
 
-fn load_sub(mpv: &Mpv) {
-    let media_path_origin = mpv.get_property::<String>("path").unwrap();
-    match Url::parse(&media_path_origin) {
-        Err(_) => return,
-        Ok(url) => {
-            if url.domain() != Some("www.bilibili.com") {
-                return;
-            }
-        }
+fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
+    let media_url = match Url::parse(
+        mpv.get_property::<String>("path")
+            .unwrap()
+            .trim_end_matches('/'),
+    ) {
+        Err(_) => return Ok(()),
+        Ok(url) => url,
+    };
+
+    if media_url.domain() != Some("www.bilibili.com") {
+        return Ok(());
     }
-    let media_path = media_path_origin.trim_end_matches('/');
 
     remove_xml_sub(mpv);
 
-    let (temp_dir, mut temp_file) =
-        match create_temp_file(&mpv.get_property::<String>("filename").unwrap()) {
-            None => return,
-            Some(temp_tuple) => temp_tuple,
-        };
+    let last_url_segment = match media_url.path_segments() {
+        None => return Ok(()),
+        Some(segments) => match segments.last() {
+            None => return Ok(()),
+            Some(segment) => segment,
+        },
+    };
 
-    let subtitle = get_danmaku_ass(media_path).unwrap();
-    temp_file.write_all(&subtitle).unwrap();
+    let (_temp_dir, mut temp_file, temp_file_path) = create_temp_file(last_url_segment)?;
+
+    let mut media_url_with_bv = media_url.clone();
+    if let Some(avid_str) = last_url_segment.strip_prefix("av") {
+        if let Ok(avid) = avid_str.parse::<u64>() {
+            media_url_with_bv
+                .path_segments_mut()
+                .unwrap()
+                .pop()
+                .push(abv::av2bv(avid)?.as_str());
+        } else {
+            return Ok(());
+        }
+    }
+    let subtitle =
+        get_danmaku_ass(media_url_with_bv.as_str()).ok_or("Failed to get danmaku ass")?;
+    temp_file.write_all(&subtitle)?;
+    temp_file.flush()?;
 
     mpv.set_property("sub-auto", "exact").unwrap();
-    mpv.set_property("options/sub-file-paths", temp_dir.path().to_str().unwrap())
-        .unwrap();
-    mpv.command("rescan-external-files", &["reselect"]).ok();
+    mpv.subtitle_add_select(
+        temp_file_path.to_str().unwrap(),
+        Some("danmaku"),
+        Some("chs"),
+    )
+    .unwrap();
+
+    Ok(())
 }
 
 fn remove_xml_sub(mpv: &Mpv) {
@@ -68,15 +95,17 @@ fn remove_xml_sub(mpv: &Mpv) {
     if let Some(xml_sub_id) = xml_sub_id_option {
         let sub_id = mpv
             .get_property::<String>(&format!("track-list/{xml_sub_id}/id"))
+            .unwrap()
+            .parse::<usize>()
             .unwrap();
-        mpv.command("sub-remove", &[&sub_id]).unwrap();
+        mpv.subtitle_remove(Some(sub_id)).ok();
     }
 }
 
-fn create_temp_file(filename: &str) -> Option<(TempDir, File)> {
-    let temp_directory = tempdir().ok()?;
+fn create_temp_file(filename: &str) -> std::io::Result<(TempDir, File, PathBuf)> {
+    let temp_directory = tempdir()?;
     let temp_path_buf = temp_directory.path().join(filename).with_extension("ass");
-    Some((temp_directory, File::create(temp_path_buf).ok()?))
+    Ok((temp_directory, File::create(&temp_path_buf)?, temp_path_buf))
 }
 
 fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
@@ -86,7 +115,7 @@ fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
 
     match output {
         Ok(output) => {
-            println!("{}", str::from_utf8(&output.stderr).unwrap());
+            println!("{}", String::from_utf8_lossy(&output.stderr));
             Some(output.stdout)
         }
         Err(err) => {
