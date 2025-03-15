@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702", default-features = false }
 libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702" }
 url = "2.5.4"
-tempfile = "3.15.0"
+tempfile = "3.19.0"
 abv = "0.3.0"

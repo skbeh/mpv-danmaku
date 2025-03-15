@@ -27,8 +27,13 @@ extern "C" fn mpv_open_cplugin(handle: *mut mpv_handle) -> std::os::raw::c_int {
     }
 }
 
+fn is_av_or_bv(video_id: &str) -> bool {
+    video_id.len() > 2
+        && (video_id.starts_with("av") || video_id.to_ascii_lowercase().starts_with("bv"))
+}
+
 fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
-    let media_url = match Url::parse(
+    let mut media_url = match Url::parse(
         mpv.get_property::<String>("path")
             .unwrap()
             .trim_end_matches('/'),
@@ -37,7 +42,31 @@ fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
         Ok(url) => url,
     };
 
-    if media_url.domain() != Some("www.bilibili.com") {
+    if media_url.cannot_be_a_base() {
+        return Ok(());
+    }
+
+    if media_url.domain() == Some("bilibili.com") {
+        media_url.set_host(Some("www.bilibili.com")).unwrap();
+    } else if media_url.domain() != Some("www.bilibili.com") {
+        return Ok(());
+    }
+
+    if media_url.path().starts_with("/video/") {
+        if let Some(id) = media_url.path_segments().unwrap().nth(1) {
+            if !is_av_or_bv(id) {
+                return Ok(());
+            }
+        } else {
+            return Ok(());
+        }
+    } else if let Some(id) = media_url.path_segments().unwrap().next() {
+        if is_av_or_bv(id) {
+            media_url.set_path(("/video".to_owned() + media_url.path()).as_str());
+        } else if id != "bangumi" {
+            return Ok(());
+        }
+    } else {
         return Ok(());
     }
 
@@ -116,6 +145,10 @@ fn get_danmaku_ass(path: &str) -> Option<Vec<u8>> {
     match output {
         Ok(output) => {
             println!("{}", String::from_utf8_lossy(&output.stderr));
+            if !output.status.success() {
+                println!("{}", String::from_utf8_lossy(&output.stdout));
+                return None;
+            }
             Some(output.stdout)
         }
         Err(err) => {
