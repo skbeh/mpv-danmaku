@@ -63,6 +63,17 @@ fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(id) = media_url.path_segments().unwrap().next() {
         if is_av_or_bv(id) {
             media_url.set_path(("/video".to_owned() + media_url.path()).as_str());
+        } else if id == "festival" {
+            if let Some(bvid) = media_url.query_pairs().find_map(|pair| {
+                if pair.0 == "bvid" {
+                    Some(pair.1.into_owned())
+                } else {
+                    None
+                }
+            }) {
+                media_url = Url::parse("https://www.bilibili.com/video").unwrap();
+                media_url.path_segments_mut().unwrap().push(bvid.as_str());
+            }
         } else if id != "bangumi" {
             return Ok(());
         }
@@ -74,7 +85,7 @@ fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
 
     let last_url_segment = match media_url.path_segments() {
         None => return Ok(()),
-        Some(segments) => match segments.last() {
+        Some(mut segments) => match segments.next_back() {
             None => return Ok(()),
             Some(segment) => segment,
         },
@@ -94,6 +105,7 @@ fn load_sub(mpv: &Mpv) -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
     }
+
     let subtitle =
         get_danmaku_ass(media_url_with_bv.as_str()).ok_or("Failed to get danmaku ass")?;
     temp_file.write_all(&subtitle)?;

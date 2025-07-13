@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702", default-features = false }
-libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "99e826721d17e2c27ec98b06f09b1f9df359b702" }
+libmpv = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "d1ffe95df74470df7df2b53bf3cdc6d2ad07c231", default-features = false }
+libmpv-sys = { git = "https://github.com/StratusFearMe21/libmpv-rs.git", rev = "d1ffe95df74470df7df2b53bf3cdc6d2ad07c231" }
 url = "2.5.4"
-tempfile = "3.19.0"
+tempfile = "3.20.0"
 abv = "0.3.0"
